@@ -159,7 +159,7 @@ const tabsEl=document.getElementById('tabs'), panel=document.getElementById('pan
 function buildTabs(){
   tabsEl.innerHTML='';
   Object.keys(DATA).forEach(name=>{
-    const tot=DATA[name].bills.length;
+    const tot=DATA[name].bills.filter(b=>b.c==='pp'||b.c==='pend').length;
     const b=document.createElement('div');
     b.className='tab'+(name===current?' active':'');
     b.innerHTML=name+'<small>'+tot+' bills</small>';
@@ -193,7 +193,7 @@ function renderCat(bills){
   if(bills.length===0){
     panel.innerHTML='<div class="scheme-head"><h2>'+current+' — Bill Pendency</h2></div><div class="cat-grid">'+catPanel(bills,pp)+catPanel(bills,pend)+'</div><div class="empty" style="margin-top:14px">No bill data loaded for <b>'+current+'</b> yet.</div>';return;
   }
-  panel.innerHTML='<div class="scheme-head"><h2>'+current+' — Bill Pendency</h2><div class="meta">Grant-in-Aid · '+shown.length+' processed/pending bills · ₹'+cr(sum(shown))+' Cr gross (Rejected & Cancelled shown in By Agency)</div></div><div class="cat-grid">'+catPanel(bills,pp)+catPanel(bills,pend)+'</div><div class="legend">Click a row for agency-wise breakup; click an agency for its bills. Rejected & Treasury-Cancelled bills appear under By Agency.</div>';
+  panel.innerHTML='<div class="scheme-head"><h2>'+current+' — Bill Pendency</h2><div class="meta">Grant-in-Aid · '+shown.length+' processed/pending bills · ₹'+cr(sum(shown))+' Cr gross</div></div><div class="cat-grid">'+catPanel(bills,pp)+catPanel(bills,pend)+'</div><div class="legend">Click a row for agency-wise breakup; click an agency for its bills.</div>';
 }
 function toggleSub(el){el.classList.toggle('open');const aw=document.querySelector('[data-aw="'+el.dataset.id+'"]');if(el.classList.contains('open')){aw.classList.add('show');fillAg(el.dataset.id,aw);}else aw.classList.remove('show');}
 function fillAg(id,aw){
@@ -212,14 +212,15 @@ function fillAg(id,aw){
 }
 function toggleAg(el){el.classList.toggle('open');document.querySelector('[data-bills="'+el.dataset.ag+'"]').classList.toggle('show');}
 
-function renderAgency(bills){
-  if(bills.length===0){panel.innerHTML='<div class="scheme-head"><h2>'+current+' — Agency-wise</h2></div><div class="empty">No bill data loaded for <b>'+current+'</b> yet.</div>';return;}
+function renderAgency(allbills){
+  if(allbills.length===0){panel.innerHTML='<div class="scheme-head"><h2>'+current+' — Agency-wise</h2></div><div class="empty">No bill data loaded for <b>'+current+'</b> yet.</div>';return;}
+  const bills=allbills.filter(b=>b.c==='pp'||b.c==='pend');
   const by={};bills.forEach(b=>{(by[b.a]=by[b.a]||[]).push(b);});
   const ags=Object.keys(by).map(n=>({n:n,arr:by[n],g:sum(by[n])})).sort((a,b)=>b.g-a.g);
   let cards='';
   ags.forEach((ag,ai)=>{
     let cats='';
-    CATS.forEach(cat=>{
+    CATS.filter(c=>c.k==='pp'||c.k==='pend').forEach(cat=>{
       const cb=ag.arr.filter(b=>b.c===cat.k);
       let subs='';
       cat.subs.forEach((sub,si)=>{const sb=cb.filter(b=>b.sub===sub);if(sb.length===0)return;
@@ -231,7 +232,7 @@ function renderAgency(bills){
     });
     cards+='<div class="agency-card" data-name="'+(ag.n||'').toLowerCase().replace(/"/g,'')+'"><div class="agency-head" data-t="agc'+ai+'" onclick="tog(this)"><span class="chev">▶</span><span class="aname">'+ag.n+'</span><span class="ahnums"><span class="pill big">'+ag.arr.length+' bills</span><span class="pill cr big">₹'+cr(ag.g)+' Cr</span></span></div><div class="agency-body" data-b="agc'+ai+'">'+cats+'</div></div>';
   });
-  panel.innerHTML='<div class="scheme-head"><h2>'+current+' — Agency-wise Details</h2><div class="meta">'+ags.length+' agencies · '+bills.length+' total Grant-in-Aid bills generated · ₹'+cr(sum(bills))+' Cr gross</div></div><div class="legend" style="margin:0 0 10px">Each agency → Total Bills Generated, then Payment Processed, Pending, Rejected & Treasury Cancelled. Click to expand; click a sub-row for individual bills.</div><div class="agency-list">'+cards+'</div>';
+  panel.innerHTML='<div class="scheme-head"><h2>'+current+' — Agency-wise Details</h2><div class="meta">'+ags.length+' agencies · '+bills.length+' processed/pending bills · ₹'+cr(sum(bills))+' Cr gross</div></div><div class="legend" style="margin:0 0 10px">Each agency → total bills, then Payment Processed and Pending breakup. Click to expand; click a sub-row for individual bills.</div><div class="agency-list">'+cards+'</div>';
 }
 function tog(el){el.classList.toggle('open');const id=el.dataset.t;const t=el.parentElement.querySelector('[data-b="'+id+'"]');if(t)t.classList.toggle('show');}
 
