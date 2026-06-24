@@ -55,6 +55,13 @@ table{width:100%;border-collapse:collapse;font-size:12.5px}
 .ag-row td{padding:8px 16px;border-bottom:1px solid #eef2f6;cursor:pointer}
 .ag-row:hover td{background:#eef4fb}
 .ag-name{display:flex;align-items:center;gap:7px}
+.civ-group td{padding:8px 16px;border-bottom:1px solid #eef2f6;cursor:pointer;background:#fff6ef}
+.civ-group:hover td{background:#fdeede}
+.civ-group .chev{transition:.2s}
+.civ-group.open .chev{transform:rotate(90deg)}
+.civ-group b{color:var(--saffron)}
+.civ-mem{display:none}
+.ag-row.civ-mem td{background:#fffdfa}
 .bills{display:none}
 .bills.show{display:table-row}
 .bills td{padding:0 16px 10px 16px;background:#fff}
@@ -206,20 +213,31 @@ function renderCat(bills){
   panel.innerHTML='<div class="scheme-head"><h2>'+current+' — Bill Pendency</h2><div class="meta">Grant-in-Aid · '+shown.length+' processed/pending bills · ₹'+cr(sum(shown))+' Cr gross</div></div><div class="cat-grid">'+catPanel(bills,pp)+catPanel(bills,pend)+'</div><div class="legend">Click a row for agency-wise breakup; click an agency for its bills.</div>';
 }
 function toggleSub(el){el.classList.toggle('open');const aw=document.querySelector('[data-aw="'+el.dataset.id+'"]');if(el.classList.contains('open')){aw.classList.add('show');fillAg(el.dataset.id,aw);}else aw.classList.remove('show');}
+function billsTbl(arr){var bl='';arr.forEach(function(b){bl+='<tr><td>'+b.r+'</td><td>'+b.n+'</td><td>'+b.d+'</td><td class="r">'+inr(b.g)+'</td><td><span class="status-tag">'+b.s+'</span></td></tr>';});return '<table><thead><tr><th>Ref No.</th><th>Bill No.</th><th>Bill Date</th><th class="r">Gross (₹)</th><th>Status</th></tr></thead><tbody>'+bl+'</tbody></table>';}
+function agRowHtml(name,arr,bid,mem){var cls='ag-row'+(mem?' civ-mem':'');var pad=mem?' style="padding-left:18px"':'';return '<tr class="'+cls+'" data-ag="'+bid+'"'+(mem?' data-civ="'+mem+'"':'')+' onclick="toggleAg(this)"><td><div class="ag-name"'+pad+'><span class="chev">▶</span>'+name+'</div></td><td class="r">'+arr.length+'</td><td class="r">₹'+cr(sum(arr))+' Cr</td></tr>'+'<tr class="bills'+(mem?' civ-mem':'')+'" data-bills="'+bid+'"'+(mem?' data-civ="'+mem+'"':'')+'><td colspan="3">'+billsTbl(arr)+'</td></tr>';}
 function fillAg(id,aw){
-  const p=id.split('|'),ck=p[1],si=+p[2];const cat=CATS.find(c=>c.k===ck);const sub=cat.subs[si];
-  const bs=DATA[current].bills.filter(b=>b.c===ck&&b.sub===sub);
-  const by={};bs.forEach(b=>{(by[b.a]=by[b.a]||[]).push(b);});
-  const ags=Object.keys(by).map(n=>({n:n,arr:by[n],g:sum(by[n])})).sort((a,b)=>b.g-a.g);
-  if(!ags.length){aw.innerHTML='<div class="empty">No bills.</div>';return;}
-  let rows='';
-  ags.forEach((ag,i)=>{const bid=id+'|'+i;let bl='';
-    ag.arr.forEach(b=>{bl+='<tr><td>'+b.r+'</td><td>'+b.n+'</td><td>'+b.d+'</td><td class="r">'+inr(b.g)+'</td><td><span class="status-tag">'+b.s+'</span></td></tr>';});
-    rows+='<tr class="ag-row" data-ag="'+bid+'" onclick="toggleAg(this)"><td><div class="ag-name"><span class="chev">▶</span>'+ag.n+'</div></td><td class="r">'+ag.arr.length+'</td><td class="r">₹'+cr(ag.g)+' Cr</td></tr><tr class="bills" data-bills="'+bid+'"><td colspan="3"><table><thead><tr><th>Ref No.</th><th>Bill No.</th><th>Bill Date</th><th class="r">Gross (₹)</th><th>Status</th></tr></thead><tbody>'+bl+'</tbody></table></td></tr>';
+  var p=id.split('|'),ck=p[1],si=+p[2];var cat=CATS.find(function(c){return c.k===ck;});var sub=cat.subs[si];
+  var bs=DATA[current].bills.filter(function(b){return b.c===ck&&b.sub===sub;});
+  if(!bs.length){aw.innerHTML='<div class="empty">No bills.</div>';return;}
+  var by={};bs.forEach(function(b){(by[b.a]=by[b.a]||[]).push(b);});
+  var civ=[],sa=[];Object.keys(by).forEach(function(n){var arr=by[n];var e={n:n,arr:arr,g:sum(arr)};if(arr[0].grp==='Civil Divisions')civ.push(e);else sa.push(e);});
+  var tops=sa.map(function(e){return {t:'a',n:e.n,arr:e.arr,g:e.g};});
+  if(civ.length){var carr=[].concat.apply([],civ.map(function(e){return e.arr;}));tops.push({t:'g',members:civ.sort(function(a,b){return b.g-a.g;}),arr:carr,g:sum(carr)});}
+  tops.sort(function(a,b){return b.g-a.g;});
+  var rows='',k=0,nag=Object.keys(by).length;
+  tops.forEach(function(t){
+    if(t.t==='a'){rows+=agRowHtml(t.n,t.arr,id+'|'+(k++),null);}
+    else{var gid=id+'|civ';rows+='<tr class="civ-group" data-civtoggle="'+gid+'" onclick="toggleCiv(this)"><td><div class="ag-name"><span class="chev">▶</span><b>Civil Divisions</b></div></td><td class="r">'+t.arr.length+'</td><td class="r">₹'+cr(t.g)+' Cr</td></tr>';
+      t.members.forEach(function(m){rows+=agRowHtml(m.n,m.arr,id+'|'+(k++),gid);});}
   });
-  aw.innerHTML='<table><thead><tr><th>Agency ('+ags.length+')</th><th class="r">Bills</th><th class="r">Gross</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  aw.innerHTML='<table><thead><tr><th>Agency / Group ('+nag+')</th><th class="r">Bills</th><th class="r">Gross</th></tr></thead><tbody>'+rows+'</tbody></table>';
   applyFilter();
 }
+function toggleCiv(el){el.classList.toggle('open');var gid=el.dataset.civtoggle;var open=el.classList.contains('open');
+  document.querySelectorAll('.civ-mem[data-civ="'+gid+'"]').forEach(function(r){
+    if(open){if(r.classList.contains('ag-row'))r.style.display='table-row';}
+    else{r.style.display='none';if(r.classList.contains('bills'))r.classList.remove('show');if(r.classList.contains('ag-row'))r.classList.remove('open');}
+  });}
 function toggleAg(el){el.classList.toggle('open');document.querySelector('[data-bills="'+el.dataset.ag+'"]').classList.toggle('show');}
 
 function agencyCardHtml(name, arr, ai){
@@ -258,7 +276,7 @@ function tog(el){el.classList.toggle('open');const id=el.dataset.t;const t=el.pa
 function applyFilter(){
   const q=(document.getElementById('q').value||'').toLowerCase().trim();
   document.querySelectorAll('.agency-card').forEach(c=>{c.style.display=(!q||c.dataset.name.includes(q))?'':'none';});
-  document.querySelectorAll('.ag-row').forEach(r=>{const nm=r.querySelector('.ag-name').textContent.toLowerCase();const show=!q||nm.includes(q);r.style.display=show?'':'none';const b=document.querySelector('[data-bills="'+r.dataset.ag+'"]');if(b&&!show){b.classList.remove('show');r.classList.remove('open');}});
+  document.querySelectorAll('.ag-row:not(.civ-mem)').forEach(r=>{const nm=r.querySelector('.ag-name').textContent.toLowerCase();const show=!q||nm.includes(q);r.style.display=show?'':'none';const b=document.querySelector('[data-bills="'+r.dataset.ag+'"]');if(b&&!show){b.classList.remove('show');r.classList.remove('open');}});
 }
 document.getElementById('q').addEventListener('input',applyFilter);
 document.getElementById('foot').textContent='Source: SNA SPARSH Bill-Report (RJ-671). Amounts in ₹ Crore (Gross). Scope: Grant-in-Aid bills. RJ-30 & RJ-577 follow the same structure — load their reports to populate.';
