@@ -150,7 +150,7 @@ html,body{max-width:100%;overflow-x:hidden}
     <button id="vcat" class="on" onclick="setView('cat')">By Category</button>
     <button id="vag" onclick="setView('agency')">By Agency</button>
   </div>
-  <div class="search"><input id="q" placeholder="Search agency by name…"></div>
+  <div class="search"><input id="q" placeholder="Search by Reference No., Bill No. or Agency name…"></div>
   <div id="panel"></div>
 </div>
 <footer id="foot"></footer>
@@ -180,11 +180,11 @@ function buildTabs(){
     const b=document.createElement('div');
     b.className='tab'+(name===current?' active':'');
     b.innerHTML=name+'<small>'+tot+' bills</small>';
-    b.onclick=()=>{current=name;buildTabs();render();};
+    b.onclick=()=>{current=name;var qi=document.getElementById('q');if(qi)qi.value='';buildTabs();render();};
     tabsEl.appendChild(b);
   });
 }
-function setView(v){view=v;document.getElementById('vcat').classList.toggle('on',v==='cat');document.getElementById('vag').classList.toggle('on',v==='agency');render();}
+function setView(v){view=v;document.getElementById('vcat').classList.toggle('on',v==='cat');document.getElementById('vag').classList.toggle('on',v==='agency');var qi=document.getElementById('q');if(qi)qi.value='';render();}
 
 function sum(arr){return arr.reduce((s,b)=>s+b.g,0);}
 
@@ -273,12 +273,27 @@ function renderAgency(allbills){
 }
 function tog(el){el.classList.toggle('open');const id=el.dataset.t;const t=el.parentElement.querySelector('[data-b="'+id+'"]');if(t)t.classList.toggle('show');}
 
+function renderSearch(q){
+  var all=DATA[current].bills;
+  if(all.length===0){panel.innerHTML='<div class="scheme-head"><h2>'+current+' &mdash; Search</h2></div><div class="empty">No data loaded for <b>'+current+'</b>.</div>';return;}
+  var hits=all.filter(function(b){return (b.r&&b.r.toLowerCase().indexOf(q)>=0)||(b.n&&b.n.toLowerCase().indexOf(q)>=0)||(b.a&&b.a.toLowerCase().indexOf(q)>=0);});
+  if(!hits.length){panel.innerHTML='<div class="scheme-head"><h2>'+current+' &mdash; Search results</h2><div class="meta">query: “'+q+'”</div></div><div class="empty">No bills match <b>'+q+'</b> (Reference No., Bill No. or Agency).</div>';return;}
+  var by={};hits.forEach(function(b){(by[b.a]=by[b.a]||[]).push(b);});
+  var ags=Object.keys(by).map(function(n){return {n:n,arr:by[n],g:sum(by[n])};}).sort(function(a,b){return b.g-a.g;});
+  var html='';
+  ags.forEach(function(ag){
+    var bl='';
+    ag.arr.forEach(function(b){bl+='<tr><td>'+b.r+'</td><td>'+b.n+'</td><td>'+b.d+'</td><td class="r">'+inr(b.g)+'</td><td>'+b.sub+'</td><td><span class="status-tag">'+b.s+'</span></td></tr>';});
+    html+='<div class="agency-card" style="margin-bottom:8px"><div class="agency-head" style="cursor:default"><span class="aname">'+ag.n+'</span><span class="ahnums"><span class="pill big">'+ag.arr.length+' bills</span><span class="pill cr big">&#8377;'+cr(ag.g)+' Cr</span></span></div><div class="agency-body show"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:560px"><thead><tr><th>Ref No.</th><th>Bill No.</th><th>Date</th><th class="r">Gross (&#8377;)</th><th>Sub-status</th><th>Status</th></tr></thead><tbody>'+bl+'</tbody></table></div></div></div>';
+  });
+  panel.innerHTML='<div class="scheme-head"><h2>'+current+' &mdash; Search results</h2><div class="meta">'+hits.length+' bill(s) &middot; &#8377;'+cr(sum(hits))+' Cr &middot; '+ags.length+' agency(ies) &middot; query “'+q+'”</div></div><div class="legend" style="margin:0 0 10px">Showing all bills whose Reference No., Bill No. or Agency name matches your search (includes Rejected/Cancelled).</div><div class="agency-list">'+html+'</div>';
+}
 function applyFilter(){
   const q=(document.getElementById('q').value||'').toLowerCase().trim();
   document.querySelectorAll('.agency-card').forEach(c=>{c.style.display=(!q||c.dataset.name.includes(q))?'':'none';});
   document.querySelectorAll('.ag-row:not(.civ-mem)').forEach(r=>{const nm=r.querySelector('.ag-name').textContent.toLowerCase();const show=!q||nm.includes(q);r.style.display=show?'':'none';const b=document.querySelector('[data-bills="'+r.dataset.ag+'"]');if(b&&!show){b.classList.remove('show');r.classList.remove('open');}});
 }
-document.getElementById('q').addEventListener('input',applyFilter);
+document.getElementById('q').addEventListener('input',function(){var q=this.value.trim();if(q==='')render();else renderSearch(q.toLowerCase());});
 document.getElementById('foot').textContent='Source: SNA SPARSH Bill-Report (RJ-671). Amounts in ₹ Crore (Gross). Scope: Grant-in-Aid bills. RJ-30 & RJ-577 follow the same structure — load their reports to populate.';
 buildTabs();render();
 </script>
