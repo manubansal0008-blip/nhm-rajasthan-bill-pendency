@@ -141,6 +141,14 @@ html,body{max-width:100%;overflow-x:hidden}
 .group-card.subgrp{border-color:#cdd8e6}
 .group-body .group-card{margin-bottom:8px}
 .iasec.oth .iasec-bar{background:linear-gradient(90deg,#7f8c8d,#616a6b)}
+.group-card.subgrp{border-color:#cdd8e6}
+.group-body .group-card{margin-bottom:8px}
+.iasec.oth .iasec-bar{background:linear-gradient(90deg,#7f8c8d,#616a6b)}
+.rollup{margin:6px 0 10px;border:1px dashed #c9d6e5;border-radius:8px;padding:4px 8px 8px;background:#f7faff}
+.rollup-cap{font-size:10.5px;color:var(--muted);font-weight:700;margin:6px 2px 2px;text-transform:uppercase;letter-spacing:.5px}
+.asub-row.static{cursor:default}
+.asub-row.static:hover{background:#fff}
+.rollup .acat{margin-top:8px}
 </style>
 </head>
 <body>
@@ -214,6 +222,7 @@ function renderNode(node,leaf,ctx){
     var byA=groupBy(arr,'a');
     inner=Object.keys(byA).map(function(a){return {name:a,arr:byA[a]};}).sort(function(x,y){return sum(y.arr)-sum(x.arr);}).map(function(an){return leaf(an.name,an.arr,ctx);}).join('');
   }
+  if(ctx.rollup){inner='<div class="rollup"><div class="rollup-cap">'+node.name+' &mdash; segment totals</div>'+catBreakdown(arr,ctx,false)+'</div>'+inner;}
   return groupCard(node.name,node.arr,inner,ctx,false);
 }
 function groupCard(name,arr,inner,ctx,isSub){var gid='gc'+(ctx.uid++);
@@ -223,15 +232,16 @@ function billsTbl(arr){var bl=arr.map(function(b){return '<tr><td>'+b.r+'</td><t
 function agencyCard(name,arr,inner,ctx){var hid='ac'+(ctx.uid++);
   return '<div class="agency-card" data-name="'+(name||'').toLowerCase().replace(/"/g,'')+'"><div class="agency-head" data-t="'+hid+'" onclick="tog(this)"><span class="chev">&#9654;</span><span class="aname">'+name+'</span><span class="ahnums"><span class="pill big">'+arr.length+' bills</span><span class="pill cr big">&#8377;'+cr(sum(arr))+' Cr</span></span></div><div class="agency-body" data-b="'+hid+'">'+inner+'</div></div>';}
 /* leaves */
-function leafCats(name,arr,ctx){
-  var cats=CATS.filter(function(c){return c.k==='pp'||c.k==='pend';}).map(function(cat){
+function catBreakdown(arr,ctx,expandable){
+  return CATS.filter(function(c){return c.k==='pp'||c.k==='pend';}).map(function(cat){
     var cb=arr.filter(function(b){return b.c===cat.k;});
     var subs=cat.subs.map(function(sub){var sb=cb.filter(function(b){return b.sub===sub;});if(!sb.length)return '';
-      var bid='lc'+(ctx.uid++);
-      return '<div class="asub"><div class="asub-row" data-t="'+bid+'" onclick="tog(this)"><span class="chev">&#9654;</span><span class="sname">'+sub+'</span><span class="snums"><span class="pill">'+sb.length+'</span><span class="pill cr">&#8377;'+cr(sum(sb))+' Cr</span></span></div><div class="abills" data-b="'+bid+'">'+billsTbl(sb)+'</div></div>';}).join('');
+      if(expandable){var bid='lc'+(ctx.uid++);
+        return '<div class="asub"><div class="asub-row" data-t="'+bid+'" onclick="tog(this)"><span class="chev">&#9654;</span><span class="sname">'+sub+'</span><span class="snums"><span class="pill">'+sb.length+'</span><span class="pill cr">&#8377;'+cr(sum(sb))+' Cr</span></span></div><div class="abills" data-b="'+bid+'">'+billsTbl(sb)+'</div></div>';}
+      return '<div class="asub"><div class="asub-row static"><span class="sname" style="padding-left:4px">'+sub+'</span><span class="snums"><span class="pill">'+sb.length+'</span><span class="pill cr">&#8377;'+cr(sum(sb))+' Cr</span></span></div></div>';}).join('');
     return '<div class="acat '+cat.cls+(cb.length===0?' zero':'')+'"><div class="acat-bar">'+cat.label+'<span>'+cb.length+' &bull; &#8377;'+cr(sum(cb))+' Cr</span></div>'+subs+'</div>';}).join('');
-  return agencyCard(name,arr,cats,ctx);
 }
+function leafCats(name,arr,ctx){return agencyCard(name,arr,catBreakdown(arr,ctx,true),ctx);}
 function leafBills(name,arr,ctx){return agencyCard(name,arr,billsTbl(arr),ctx);}
 function leafLevels(name,arr,ctx){var G=arr[0].lvlgrp;var order=LORDER[G]||[];
   var lv=order.map(function(l){var lb=arr.filter(function(b){return b.lvl===l;});if(!lb.length)return '';
@@ -265,7 +275,7 @@ function fillIASNA(sub,aw){var bs=DATA[current].bills.filter(function(b){return 
 function renderAgency(allbills){
   if(allbills.length===0){panel.innerHTML='<div class="scheme-head"><h2>'+current+' &mdash; Agency-wise</h2></div><div class="empty">No bill data loaded for <b>'+current+'</b> yet.</div>';return;}
   var bills=allbills.filter(function(b){return b.c==='pp'||b.c==='pend';});
-  var nag=Object.keys(groupBy(bills,'a')).length;var ctx={uid:0};var html=groupNodes(bills,leafCats,ctx);
+  var nag=Object.keys(groupBy(bills,'a')).length;var ctx={uid:0,rollup:true};var html=groupNodes(bills,leafCats,ctx);
   panel.innerHTML='<div class="scheme-head"><h2>'+current+' &mdash; Agency-wise Details</h2><div class="meta">'+nag+' agencies &middot; '+bills.length+' processed/pending bills &middot; &#8377;'+cr(sum(bills))+' Cr gross</div></div><div class="legend" style="margin:0 0 10px">Grouped by major head; expand to agencies, then Payment Processed / Pending breakup (IA/SNA levels under Treasury Objected & Pending at IA and SNA).</div><div class="agency-list">'+html+'</div>';}
 /* Search */
 function renderSearch(q){var all=DATA[current].bills;
