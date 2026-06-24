@@ -80,6 +80,36 @@ footer{max-width:1180px;margin:8px auto 30px;padding:0 18px;color:var(--muted);f
 #gate button:hover{background:#274d8c}
 #gate .err{color:#c0392b;font-size:12px;height:16px;margin-top:8px}
 body.locked{overflow:hidden}
+
+/* ---- mobile responsiveness ---- */
+html,body{max-width:100%;overflow-x:hidden}
+*{word-break:break-word}
+.agency-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.agency-wrap>table{min-width:320px}
+.bills table{min-width:480px}
+@media(max-width:640px){
+  header{padding:12px 14px;gap:10px}
+  header .logo{width:40px;height:40px;font-size:13px}
+  header h1{font-size:14px;line-height:1.25}
+  header .sub{font-size:10.5px}
+  .wrap{padding:10px}
+  .tabs{gap:4px}
+  .tab{padding:8px 14px;font-size:13px}
+  .search input{font-size:13px}
+  .scheme-head h2{font-size:15px}
+  .scheme-head .meta{font-size:10.5px}
+  .cat-grid{gap:12px}
+  .cat-bar{padding:11px 13px}
+  .cat-bar .t{font-size:14px}
+  .sub-row{padding:10px 12px;flex-wrap:wrap;gap:6px}
+  .sub-row .name{font-size:13px}
+  .sub-row .nums{gap:8px}
+  .pill{font-size:11px;padding:2px 8px}
+  table{font-size:11.5px}
+  .agency-wrap table th,.ag-row td{padding:7px 10px}
+  .bills table{margin-left:10px;width:calc(100% - 10px)}
+  .legend,footer{font-size:10.5px}
+}
 </style>
 </head>
 <body>
